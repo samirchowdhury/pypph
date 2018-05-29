@@ -18,7 +18,10 @@ class Dirnet(object):
         self.slots       = [] # linear arrays containing slots
         self.marked      = [] # pool all marked paths
         self.summands    = []
-        self.testy       = []
+        self.grewlistby  = 0
+        #self.testy       = []
+        #self.lenbd       = []
+        #self.bd          = []
         self.maxindex    = []
         self.readNet(data_file)
         self.getAPaths()
@@ -165,6 +168,10 @@ class Dirnet(object):
 
     def computeSimpleBoundary(self,path):
         summands = []
+        #lp = len(path)
+        workdim = 1 # hardcode
+        apset = set(self.ap[workdim])
+        #self.testy = apset
         # apply boundary operator
         for idx in enumerate(path):
             bd = [s for s in path]
@@ -173,9 +180,22 @@ class Dirnet(object):
             # terms of type [1 1] or [2 2] are not added to summand
             if (self.hasRepeats(bd)):
                 continue
+            
+            # unmarked terms are not added, except if they are unallowed
+            # assumption: 0-paths are connected by supplied edges, 
+            # so only modification is to 1-paths (for current implem)
+            q = tuple(bd)
             if (len(bd)==1):
                 if bd[0] in self.marked:
-                    summands.append(bd[0])
+                    summands.append(bd[0])        
+            elif (len(bd)==2 and q not in apset):   # grow arrays if needed
+                summands.append(q)
+                self.ap[workdim].append(q)
+                self.apwgts[workdim].append(self.max_time)
+                self.slots[1].append([])
+                apset = apset.union([q])
+                self.grewlistby = self.grewlistby + 1
+                # mark that we grew the list
             else:
                 if tuple(bd) in self.marked:
                     summands.append(tuple(bd))
@@ -202,20 +222,37 @@ class Dirnet(object):
             else:
                 break    
         self.summands = summands
-        self.testy    = path
+        #self.testy    = path
         self.maxindex = maxindex
+
+    def storeOrMark(self,path,workdim,savedim):
+        if (self.summands):
+            self.slots[savedim][self.maxindex] = self.summands
+        else:
+            self.marked.append(path)
 
 
     def runpph(self):
         workdim = range(1,3)
         for i in workdim:
             savedim = i-1
-            for path in self.ap[i]:
+            j = 0
+            while j < len(self.ap[i]):
+                path = self.ap[i][j]
+            #for path in self.ap[i]:
                 self.computeBoundary(path)
-                if (self.summands):
-                    self.slots[savedim][self.maxindex] = self.summands
+                if (self.grewlistby):
+                    for k in range(1,self.grewlistby+1):
+                        temp_workdim = i-1
+                        temp_savedim = i-2
+                        temp_path = self.ap[temp_workdim][0-k] #access last k elements
+                        self.computeBoundary(temp_path)
+                        self.storeOrMark(temp_path,temp_workdim,temp_savedim)
+                    self.grewlistby = 0
+                    j = j-1
                 else:
-                    self.marked.append(path)
+                    self.storeOrMark(path,workdim,savedim)
+                j = j+1
 
 """
     def testcb(self):
