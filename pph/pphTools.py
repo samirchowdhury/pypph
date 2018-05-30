@@ -6,8 +6,10 @@ from operator import itemgetter
 
 class Dirnet(object):
     def __init__(self, data_file):
+        # variables
         self.max_dim     = 2  # hard-coded for now
         self.max_time    = 10000 # hard-coded for now
+        self.min_time    = 0 # hard-coded for now
         self.num_nodes   = 0
         self.edges       = []
         self.wgts        = []
@@ -18,19 +20,29 @@ class Dirnet(object):
         self.slots       = [] # linear arrays containing slots
         self.marked      = [] # pool all marked paths
         self.summands    = []
+        self.at_max_term = self.min_time
+        self.et          = self.min_time
         self.grewlistby  = 0
-        #self.testy       = []
-        #self.lenbd       = []
-        #self.bd          = []
+        self.testy       = []
+        self.testx       = []
+        self.testz       = []
         self.maxindex    = []
+        self.pers        = []
+
+        # member functions
         self.readNet(data_file)
+        self.makePers()
         self.getAPaths()
         self.makeSlots()
         self.markZero()
+
         #self.markOne()
         self.runpph()
         #self.testcb()
 
+    def makePers(self):
+        for i in range(0, self.max_dim):
+            self.pers.append([str(i)+"-dim bars are ", []])
 
     def readNet(self, data_file):
         fn                  = data_file
@@ -50,7 +62,7 @@ class Dirnet(object):
         # 0-paths first
         zeroap              = [str(s) for s in range(1, int(self.num_nodes)+1)]
         #zeroap              = zip(zeroap, [0]*int(self.num_nodes))
-        zeroap_times        = [0] * int(self.num_nodes)
+        zeroap_times        = [self.min_time] * int(self.num_nodes)
         self.ap.append(zeroap)
         self.apwgts.append(zeroap_times)
 
@@ -63,14 +75,7 @@ class Dirnet(object):
         self.apwgts.append(oneap_times)
         self.ap.append(oneap)
         # 1-paths done, now do 2-paths
-        """ 
-        This implementation uses nested for loops to construct
-        2-paths. If there are Cn edges in the graph, where n
-        is the number of nodes, then the 
-        nested loops will take (Cn)^2 time. In contrast, using 
-        npermk to precompute all possible 2-paths on n nodes 
-        will cost n^3 time.
-        """
+
         twoap       =   []
         for i_indx, i in enumerate(self.edges):
             for j_indx, j in enumerate(self.edges):
@@ -108,12 +113,6 @@ class Dirnet(object):
         for s in self.ap[1]:
             self.marked.append(s)
 
-    """ For getIndx:
-        term is an element in the boundary of path.
-        if path is del-invariant, then term will be 
-        an allowed path automatically. otherwise, term
-        will enter the filtration at the endtime. 
-    """
     def getIndx(self, path, term):
         # get the index of a summand of a path
         # if path not allowed, append to self.ap at max_time
@@ -126,15 +125,6 @@ class Dirnet(object):
         idx = self.ap[lp-2].index(term)
         return idx
 
-        """
-        if (term in self.ap[lp-2]):
-            idx = self.ap[lp-2].index(term)
-        else:
-            # idx = -1
-            self.ap[lp-2].append(term)
-            idx = self.ap
-        return idx
-        """
     # function to return maxindex element from path and summands
     # summands refer to marked elements returned from applying del
     # operator to path
@@ -147,17 +137,13 @@ class Dirnet(object):
                 term_idx_in_summands = summands.index(term)
                 max_term_in_summands = term
                 maxindex             = self.getIndx(path,term)
-        return [term_idx_in_summands, max_term_in_summands, maxindex]
+        # get the allow time of summand with maxindex
+        lp               = len(path)
+        at_max_term      = self.apwgts[lp-2][maxindex]
+        
+        return [term_idx_in_summands, max_term_in_summands, maxindex, at_max_term]
 
 
-    """ For computeBoundary:
-        following can be used if we want Zp or real coeff;
-        just use (-1)**idx
-
-        for idx, term in enumerate(path):
-            bd = [s for s in path if s != term]
-            summands.append(bd)
-    """
     def hasRepeats(self,path):
         lp = len(path)
         flag = False
@@ -169,7 +155,7 @@ class Dirnet(object):
     def computeSimpleBoundary(self,path):
         summands = []
         #lp = len(path)
-        workdim = 1 # hardcode
+        workdim = 1 # hardcode, will need to change for higher dim implem
         apset = set(self.ap[workdim])
         #self.testy = apset
         # apply boundary operator
@@ -201,36 +187,55 @@ class Dirnet(object):
                     summands.append(tuple(bd))
         return summands
    
-    def computeBoundary(self, path):
-        summands = self.computeSimpleBoundary(path)
+    def computeBoundary(self, path, path_dim, path_idx):
+        at_path     = self.apwgts[path_dim][path_idx]
+        summands    = self.computeSimpleBoundary(path)
         self.basisChange(path,summands)
+        self.et     = max(at_path, self.at_max_term)
+        
         
         
     
     def basisChange(self,path,summands):
         bd_ap_idx = len(path)-2
         maxindex = 0
-        # if maxidx slot has something, remove maxidx element (Z2 coeff here)
+        at_max_term = self.min_time
+        # if maxidx slot has something, do cancellation (Z2 coeff here)
         while (summands):
             q = self.getMaxIndx(path,summands)
             #max_term               = q[1]
-            max_term_idx_summands   = q[0] 
+            #max_term_idx_summands   = q[0] 
             maxindex                = q[2]
+            at_max_term             = q[3]
 
             if (self.slots[bd_ap_idx][maxindex]):
-                del summands[max_term_idx_summands]
+                # if there is stuff, then it has positive length
+                list_el = self.slots[bd_ap_idx][maxindex][0]
+                summands= [x for x in summands if x not in list_el]
+
+                #del summands[max_term_idx_summands]
             else:
                 break    
         self.summands = summands
         #self.testy    = path
+        self.at_max_term = at_max_term
         self.maxindex = maxindex
 
-    def storeOrMark(self,path,workdim,savedim):
+    def storeOrMark(self,path,workdim,savedim,et):
         if (self.summands):
-            self.slots[savedim][self.maxindex] = self.summands
+            self.slots[savedim][self.maxindex] = tuple([self.summands,et])
+            # add to pers
+            birth   = float(self.apwgts[savedim][self.maxindex])
+            death   = float(et)
+            if (birth < death):
+                bar = tuple([birth,death])
+                self.pers[savedim][1].append(bar)
         else:
+            #self.slots[savedim][self.maxindex] = tuple([self.summands,et])
+            
             self.marked.append(path)
 
+    
 
     def runpph(self):
         workdim = range(1,3)
@@ -238,34 +243,44 @@ class Dirnet(object):
             savedim = i-1
             j = 0
             while j < len(self.ap[i]):
-                path = self.ap[i][j]
+                path            = self.ap[i][j]
+                at_path         = self.apwgts[i][j]
+                #et              = at_path
             #for path in self.ap[i]:
-                self.computeBoundary(path)
+                self.computeBoundary(path,i,j)
                 if (self.grewlistby):
                     for k in range(1,self.grewlistby+1):
-                        temp_workdim = i-1
-                        temp_savedim = i-2
-                        temp_path = self.ap[temp_workdim][0-k] #access last k elements
-                        self.computeBoundary(temp_path)
-                        self.storeOrMark(temp_path,temp_workdim,temp_savedim)
+                        temp_workdim    = i-1
+                        temp_savedim    = i-2
+                        temp_path       = self.ap[temp_workdim][0-k] #access last k elements
+                        temp_path_idx   = self.ap[temp_workdim].index(temp_path) 
+                        self.computeBoundary(temp_path, temp_workdim, temp_path_idx)
+                        #et = max(at_path, self.at_max_term)
+                        self.testy = at_path
+                        self.testx = self.summands
+                        self.testz = temp_path
+                        self.storeOrMark(temp_path,temp_workdim,temp_savedim, self.et)
                     self.grewlistby = 0
                     j = j-1
+                    
                 else:
-                    self.storeOrMark(path,workdim,savedim)
+                    # et = max(at_path, self.at_max_term)
+                    self.storeOrMark(path,workdim,savedim,self.et)
                 j = j+1
-
-"""
-    def testcb(self):
-        for j in range(0,2):
-            self.computeBoundary(self.ap[2][j])
-            if (self.summands):
-                self.slots[1][self.maxindex] = self.summands
-"""
-
-    
-
-
-
+        for i in range(0,self.max_dim):
+            for idx, term in enumerate(self.ap[i]):
+                if (term in self.marked and not self.slots[i][idx]):
+                    birth       = float(self.apwgts[i][idx])
+                    death       = float(self.max_time)
+                    self.testy  = i
+                    self.testx  = idx
+                    self.testz  = birth
+                    if (birth < death):
+                        bar     = tuple([birth,death])
+                        self.pers[i][1].append(bar)
 
 
+
+            
+            
 
