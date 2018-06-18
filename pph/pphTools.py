@@ -33,6 +33,7 @@ class Dirnet(object):
         self.readNet(data_file)
         self.makePers()
         self.getAPaths()
+        self.addInfAPaths()
         self.makeSlots()
         self.markZero()
 
@@ -95,6 +96,27 @@ class Dirnet(object):
         self.apwgts.append(twoap_times)
         # pool things together
 
+    def addInfAPaths(self):
+        # go through 2-paths, see which "missing" paths
+        # need to be added at infinity. 
+        for path in self.ap[2]:
+            for idx in enumerate(path):
+                bd = [s for s in path]
+                del bd[idx[0]]
+                q = tuple(bd)
+
+                # terms of type [1 1] or [2 2] are ignored
+                if (self.hasRepeats(bd)):
+                    continue
+
+                if q not in self.ap[1]:
+                    self.ap[1].append(q)
+                    self.apwgts[1].append(self.max_time)
+                    self.testx = q
+
+
+
+
     def makeSlots(self):
         # initialize the slots 
         for i in range(0, self.max_dim+1):
@@ -108,10 +130,6 @@ class Dirnet(object):
         for i in range(1,int(self.num_nodes)+1):
             self.marked.append(str(i))
 
-    def markOne(self):
-        # just for testing, this should not be used in final code
-        for s in self.ap[1]:
-            self.marked.append(s)
 
     def getIndx(self, path, term):
         # get the index of a summand of a path
@@ -156,7 +174,7 @@ class Dirnet(object):
         summands = []
         #lp = len(path)
         workdim = 1 # hardcode, will need to change for higher dim implem
-        apset = set(self.ap[workdim])
+        #apset = set(self.ap[workdim])
         #self.testy = apset
         # apply boundary operator
         for idx in enumerate(path):
@@ -170,10 +188,14 @@ class Dirnet(object):
             # unmarked terms are not added, except if they are unallowed
             # assumption: 0-paths are connected by supplied edges, 
             # so only modification is to 1-paths (for current implem)
-            q = tuple(bd)
+            #q = tuple(bd)
             if (len(bd)==1):
                 if bd[0] in self.marked:
-                    summands.append(bd[0])        
+                    summands.append(bd[0]) 
+            else:
+                if tuple(bd) in self.marked:
+                    summands.append(tuple(bd))  
+            """             
             elif (len(bd)==2 and q not in apset):   # grow arrays if needed
                 summands.append(q)
                 self.ap[workdim].append(q)
@@ -182,16 +204,15 @@ class Dirnet(object):
                 apset = apset.union([q])
                 self.grewlistby = self.grewlistby + 1
                 # mark that we grew the list
-            else:
-                if tuple(bd) in self.marked:
-                    summands.append(tuple(bd))
+            """
+           
         return summands
    
     def computeBoundary(self, path, path_dim, path_idx):
         at_path     = self.apwgts[path_dim][path_idx]
         summands    = self.computeSimpleBoundary(path)
         self.basisChange(path,summands)
-        self.et     = max(at_path, self.at_max_term)
+        self.et     = max(float(at_path), float(self.at_max_term))
         
         
         
@@ -210,8 +231,26 @@ class Dirnet(object):
 
             if (self.slots[bd_ap_idx][maxindex]):
                 # if there is stuff, then it has positive length
-                list_el = self.slots[bd_ap_idx][maxindex][0]
-                summands= [x for x in summands if x not in list_el]
+                list_el     = self.slots[bd_ap_idx][maxindex][0]
+                add_to_sum  = [x for x in list_el if x not in summands]
+                summands    = [x for x in summands if x not in list_el]
+                summands    = summands + add_to_sum
+                """
+                if (path == self.ap[0][2]):
+                    add_to_sum  = [x for x in list_el if x not in summands]
+                    summands    = [x for x in summands if x not in list_el]
+                    summands    = summands + add_to_sum
+                    self.testx = add_to_sum
+                    self.testy = summands
+                    self.testz = list_el
+
+                else:
+                    summands    = [x for x in summands if x not in list_el]
+                """
+                #add_to_sum  = [x for x in list_el if x not in summands]
+                
+                #summands    = list(set(summands).symmetric_difference(set(list_el)))
+                #summands    = summands + add_to_sum
 
                 #del summands[max_term_idx_summands]
             else:
@@ -227,16 +266,46 @@ class Dirnet(object):
             # add to pers
             birth   = float(self.apwgts[savedim][self.maxindex])
             death   = float(et)
+            #bar = tuple([birth,death])
+            #self.pers[savedim][1].append(bar)
+            
             if (birth < death):
                 bar = tuple([birth,death])
                 self.pers[savedim][1].append(bar)
+            
         else:
             #self.slots[savedim][self.maxindex] = tuple([self.summands,et])
             
             self.marked.append(path)
 
     
+    def runpph(self):
+        workdim = range(1,3)
+        for i in workdim:
+            savedim = i-1
+            j = 0
+            while j < len(self.ap[i]):
+                path            = self.ap[i][j]
+                #at_path         = self.apwgts[i][j]
+                self.computeBoundary(path,i,j)
+                self.storeOrMark(path,workdim,savedim,self.et)
+                j=j+1
+        for i in range(0,self.max_dim):
+            for idx, term in enumerate(self.ap[i]):
+                if (term in self.marked and not self.slots[i][idx]):
+                    birth       = float(self.apwgts[i][idx])
+                    death       = float(self.max_time)
+                    #bar     = tuple([birth,death])
+                    #self.pers[i][1].append(bar)
+                    
+                    if (birth < death):
+                        bar     = tuple([birth,death])
+                        self.pers[i][1].append(bar)
+                    
 
+
+
+    """ Deprecated version
     def runpph(self):
         workdim = range(1,3)
         for i in workdim:
@@ -248,6 +317,9 @@ class Dirnet(object):
                 #et              = at_path
             #for path in self.ap[i]:
                 self.computeBoundary(path,i,j)
+                self.storeOrMark(path,workdim,savedim,self.et)
+                j=j+1
+                
                 if (self.grewlistby):
                     for k in range(1,self.grewlistby+1):
                         temp_workdim    = i-1
@@ -255,10 +327,6 @@ class Dirnet(object):
                         temp_path       = self.ap[temp_workdim][0-k] #access last k elements
                         temp_path_idx   = self.ap[temp_workdim].index(temp_path) 
                         self.computeBoundary(temp_path, temp_workdim, temp_path_idx)
-                        #et = max(at_path, self.at_max_term)
-                        self.testy = at_path
-                        self.testx = self.summands
-                        self.testz = temp_path
                         self.storeOrMark(temp_path,temp_workdim,temp_savedim, self.et)
                     self.grewlistby = 0
                     j = j-1
@@ -267,20 +335,22 @@ class Dirnet(object):
                     # et = max(at_path, self.at_max_term)
                     self.storeOrMark(path,workdim,savedim,self.et)
                 j = j+1
+                
         for i in range(0,self.max_dim):
             for idx, term in enumerate(self.ap[i]):
                 if (term in self.marked and not self.slots[i][idx]):
                     birth       = float(self.apwgts[i][idx])
                     death       = float(self.max_time)
-                    self.testy  = i
-                    self.testx  = idx
-                    self.testz  = birth
                     if (birth < death):
                         bar     = tuple([birth,death])
                         self.pers[i][1].append(bar)
-
+    """
 
 
             
-            
+    
+    def markOne(self):
+        # just for testing, this should not be used in final code
+        for s in self.ap[1]:
+            self.marked.append(s)
 
