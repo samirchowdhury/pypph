@@ -1,5 +1,12 @@
 import sys
 from pph.pphTools import Dirnet
+
+""" for generating log files
+old_stdout = sys.stdout
+log_file = open("message.log","w")
+sys.stdout = log_file
+"""
+
 print(sys.argv)
 
 
@@ -16,11 +23,14 @@ def run():
     #print("1-paths are ", dn.ap[1])
     #print(dn.apwgts[1])
     #print("2-paths are", dn.ap[2])
+    #print("num 2-paths", len(dn.ap[2]))
     #print(dn.apwgts[2])
+    #print("num marked", len(dn.marked))
     #print("marked paths are", dn.marked)
     #print("summands are",dn.summands)
     #print("testx is ", dn.testx)
     #print("testy is ", dn.testy)
+    #print("testz is ", dn.testz)
     #print("lenbd is ", dn.lenbd)
     #print("bd is ", dn.bd)
     #print("tupbd is ", dn.tupbd)
@@ -38,3 +48,8 @@ def run():
     #print(dn.oneap[0][0][0])
 
 run()
+
+"""
+sys.stdout = old_stdout
+log_file.close()
+"""

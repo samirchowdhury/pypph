@@ -23,7 +23,7 @@ class Dirnet(object):
         self.at_max_term = self.min_time
         self.et          = self.min_time
         self.grewlistby  = 0
-        self.testy       = []
+        self.testy       = 0
         self.testx       = []
         self.testz       = []
         self.maxindex    = []
@@ -71,7 +71,7 @@ class Dirnet(object):
         oneap               = zip(self.edges,self.wgts)
         oneap               = sorted(oneap,key=itemgetter(1)) 
         # after sorting by times, split into paths and times
-        oneap_times         = [s[1] for s in oneap]
+        oneap_times         = [float(s[1]) for s in oneap]
         oneap               = [s[0] for s in oneap]
         self.apwgts.append(oneap_times)
         self.ap.append(oneap)
@@ -82,7 +82,7 @@ class Dirnet(object):
             for j_indx, j in enumerate(self.edges):
                 if (j[0]==i[1]):
                     twoap_temp  = (i[0], i[1], j[1])
-                    twoap_time  = max(self.wgts[i_indx], self.wgts[j_indx])
+                    twoap_time  = max(float(self.wgts[i_indx]), float(self.wgts[j_indx]))
                     #temp        = zip(twoap,twoap_time)
                     twoap.append((twoap_temp,twoap_time))
                     #print("j[0] is ",j[0], "i[1] is ", i[1])
@@ -112,7 +112,7 @@ class Dirnet(object):
                 if q not in self.ap[1]:
                     self.ap[1].append(q)
                     self.apwgts[1].append(self.max_time)
-                    self.testx = q
+                    #self.testx = q
 
 
 
@@ -173,7 +173,7 @@ class Dirnet(object):
     def computeSimpleBoundary(self,path):
         summands = []
         #lp = len(path)
-        workdim = 1 # hardcode, will need to change for higher dim implem
+        #workdim = 1 # hardcode, will need to change for higher dim implem
         #apset = set(self.ap[workdim])
         #self.testy = apset
         # apply boundary operator
@@ -229,7 +229,14 @@ class Dirnet(object):
             maxindex                = q[2]
             at_max_term             = q[3]
 
+            if (bd_ap_idx == 1 and maxindex == 10 and not self.slots[1][10] and self.testy==0):
+                    self.testx = path
+                    self.testz = summands
+                    self.testy = self.testy+1
             if (self.slots[bd_ap_idx][maxindex]):
+                # remove following after debugging
+               
+
                 # if there is stuff, then it has positive length
                 list_el     = self.slots[bd_ap_idx][maxindex][0]
                 add_to_sum  = [x for x in list_el if x not in summands]
@@ -301,53 +308,7 @@ class Dirnet(object):
                     if (birth < death):
                         bar     = tuple([birth,death])
                         self.pers[i][1].append(bar)
-                    
-
-
-
-    """ Deprecated version
-    def runpph(self):
-        workdim = range(1,3)
-        for i in workdim:
-            savedim = i-1
-            j = 0
-            while j < len(self.ap[i]):
-                path            = self.ap[i][j]
-                at_path         = self.apwgts[i][j]
-                #et              = at_path
-            #for path in self.ap[i]:
-                self.computeBoundary(path,i,j)
-                self.storeOrMark(path,workdim,savedim,self.et)
-                j=j+1
-                
-                if (self.grewlistby):
-                    for k in range(1,self.grewlistby+1):
-                        temp_workdim    = i-1
-                        temp_savedim    = i-2
-                        temp_path       = self.ap[temp_workdim][0-k] #access last k elements
-                        temp_path_idx   = self.ap[temp_workdim].index(temp_path) 
-                        self.computeBoundary(temp_path, temp_workdim, temp_path_idx)
-                        self.storeOrMark(temp_path,temp_workdim,temp_savedim, self.et)
-                    self.grewlistby = 0
-                    j = j-1
-                    
-                else:
-                    # et = max(at_path, self.at_max_term)
-                    self.storeOrMark(path,workdim,savedim,self.et)
-                j = j+1
-                
-        for i in range(0,self.max_dim):
-            for idx, term in enumerate(self.ap[i]):
-                if (term in self.marked and not self.slots[i][idx]):
-                    birth       = float(self.apwgts[i][idx])
-                    death       = float(self.max_time)
-                    if (birth < death):
-                        bar     = tuple([birth,death])
-                        self.pers[i][1].append(bar)
-    """
-
-
-            
+                               
     
     def markOne(self):
         # just for testing, this should not be used in final code
