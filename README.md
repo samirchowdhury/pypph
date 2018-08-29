@@ -22,7 +22,7 @@ Here n is the number of nodes. E.g.
   
   python cycleNet.py 11
 
-## Usage
+### Usage
 
 The .txt files provided in the tests folder are examples of input files to pypph. 
 The first line in the input file should be the number of nodes. In the following
