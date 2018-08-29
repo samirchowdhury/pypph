@@ -16,8 +16,8 @@ The output should look like:
 
 The tests folder contains code for generating cycle networks on n nodes. To run, type the following in from the command line:
 
-  python cycleNet.py <n>
+  python cycleNet.py < n >
   
-Here <n> is the number of nodes. E.g.
+Here < n > is the number of nodes. E.g.
   
   python cycleNet.py 11
