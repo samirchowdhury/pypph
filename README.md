@@ -24,7 +24,7 @@ Here n is the number of nodes. E.g.
 
 ## Usage
 
-The .txt files provided in the tests folder are examples of input files to pph. 
+The .txt files provided in the tests folder are examples of input files to pypph. 
 The first line in the input file should be the number of nodes. In the following
 lines, each row has three entries: the first two describe the edge, and the 
 third entry is the corresponding edge weight.
