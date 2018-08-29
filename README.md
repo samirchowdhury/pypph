@@ -28,3 +28,10 @@ The .txt files provided in the tests folder are examples of input files to pypph
 The first line in the input file should be the number of nodes. In the following
 lines, each row has three entries: the first two describe the edge, and the 
 third entry is the corresponding edge weight.
+
+
+### Output
+
+The value of 10,000 just means "Infinity" - this should only appear in the
+0-dimensional case. Infinitely long 0-dimensional bars represent connected 
+components that live forever. 
