@@ -21,3 +21,10 @@ The tests folder contains code for generating cycle networks on n nodes. To run,
 Here n is the number of nodes. E.g.
   
   python cycleNet.py 11
+
+## Usage
+
+The .txt files provided in the tests folder are examples of input files to pph. 
+The first line in the input file should be the number of nodes. In the following
+lines, each row has three entries: the first two describe the edge, and the 
+third entry is the corresponding edge weight.
